@@ -1,4 +1,4 @@
-# 🏉 Flatten dictionnary Benchmark
+# 🥥 Benchmark: Flattening Nested JSON Data 
 
 This repository contains a benchmark comparing different methods for ingesting and flattening nested JSON data 
 For testiong purposes, we use sports statistics data — specifically, rugby data.
