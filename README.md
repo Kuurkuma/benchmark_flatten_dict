@@ -3,11 +3,11 @@
 This repository contains a benchmark comparing different methods for ingesting and flattening nested JSON data 
 For testiong purposes, we use sports statistics data — specifically, rugby data.
 
-## 📌 Context
+## Context
 
 I have worked on a project to build a clean, queryable database of rugby statistics. The goal is to power a new kind of sports visualization experience — built by and for fans.
 
-To achieve this, I’m ingesting data from a RapidAPI that returns deeply nested JSON responses. This includes complex structures such as:
+To achieve this, I was ingesting data from a RapidAPI that returns deeply nested JSON responses. This includes complex structures such as:
 
 - Lists of dictionaries
 - Nested dictionaries
@@ -15,9 +15,8 @@ To achieve this, I’m ingesting data from a RapidAPI that returns deeply nested
 
 The ingestion pipeline is designed to run on **low-cost workers**, where **memory usage** and **execution efficiency** are critical.
 
----
 
-## 🚧 Problem Statement
+## Problem Statement
 
 > How can we ingest and flatten deeply nested JSON from an API efficiently — while keeping memory usage low and code maintainable?
 
@@ -41,8 +40,6 @@ A straightforward method that manually walks through JSON keys using `.get()`, b
 #### b. Recursive Generator Function
 A more advanced approach using a recursive generator to yield all values from a nested JSON object.
 
----
-
 ### 2. Library-Oriented Approaches
 
 #### a. [`pandas.json_normalize`](https://pandas.pydata.org/docs/reference/api/pandas.json_normalize.html)
@@ -51,10 +48,8 @@ Used to flatten records into a table-like format.
 #### b. [`flatdict`](https://pypi.org/project/flatdict/)
 Recursively flattens dictionaries into key paths, e.g., `"match.kicks"`.
 
-#### c. [`dlt`](https://github.com/duckdblabs/dlt)
+#### c. [`dlt`](https://dlthub.com/docs/intro)
 A modern ingestion framework that automates schema normalization and handles loading into destinations like DuckDB or cloud warehouses.
-
----
 
 ## 🧾 Metrics Evaluated
 
@@ -68,8 +63,6 @@ Each method was evaluated based on:
 
 ---
 
----
-
 ## 🚀 How to Run
 
 1. Clone this repo  
@@ -80,7 +73,7 @@ Each method was evaluated based on:
 
 2. Install dependencies  
 
-This project uses the `uv` blazing fast python manage manager that everyone should use ;)
+This project uses the `uv` blazing fast package manager that everyone should use ;)
 ```
 uv venv                      # Create a virtual environment (like `python -m venv .venv`)
 source .venv/bin/activate    # or `.venv\Scripts\activate` on Windows
