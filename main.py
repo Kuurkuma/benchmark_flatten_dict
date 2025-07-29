@@ -1,5 +1,5 @@
 import time
-import nao 
+import tracemalloc
 from functools import wraps
 import pandas as pd
 from flatdict import FlatDict
@@ -137,7 +137,7 @@ def generator_flatten(match_details):
         return dict(flatten_gen(d, parent_key, sep))
 
     player_list = match_details.get('home', {}).get('teamsheet', [])
-    processed_players = []
+    player_stats = []
 
     for player in player_list:
         if 'match_stats' in player and isinstance(player['match_stats'], MutableMapping):
@@ -145,9 +145,9 @@ def generator_flatten(match_details):
             flat_stats = flatten_dict(nested_stats, sep='_')
             player.update(flat_stats)
 
-        processed_players.append(player)
+        player_stats.append(player)
 
-    return processed_players
+    return player_stats
 
 
 ## Library-based functions
@@ -202,6 +202,8 @@ def dlt_flatten(match_details):
     transformed_pipeline = pipeline | unnest_player_stats
     return list(transformed_pipeline)
 
+
+    
 # --- Main Comparison Function ---
 def run_and_compare(data):
     """
@@ -256,5 +258,4 @@ if __name__ == "__main__":
 
     print(final_comparison_df.sort_values(by=['num_players', 'memory_in_mb']).to_string())
 
-    with open("../data/benchmark_results.json", 'w') as f:
-        json.dump(final_comparison_df)
+    final_comparison_df.to_json("data/benchmark_results.json", orient='records')
