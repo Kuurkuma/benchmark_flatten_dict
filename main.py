@@ -1,3 +1,4 @@
+import copy
 import time
 import tracemalloc
 from functools import wraps
@@ -122,6 +123,7 @@ def manual_flatten(match_details):
             **flat_stats,
         }
         player_stats.append(player_row)
+
     return player_stats
 
 
@@ -205,28 +207,18 @@ def dlt_flatten(match_details):
                 "teamsheet", []
             )  # use yield instead yield from, will be faster
 
-        @dlt.transformer
-        def player_stats(players):
-            """Takes a player dict, unnests 'match_stats', and yields the result."""
+        return players_resource
 
-            @dlt.defer
-            def _get_player_stats(_player):
-                if "match_stats" in _player:
-                    stats = _player.pop("match_stats", {})
-                    _player.update(stats)
-                return _player
+    pipeline = dlt.pipeline(
+        pipeline_name="match_details_pipeline",
+        destination="duckdb",  # Choose the appropriate destination
+        dataset_name="match_details_dataset",
+    )
 
-            for _player in players:
-                yield _get_player_stats(_player)
-                print(_player)
+    pipeline.run(match_source(match_details))
 
-        return (
-            players_resource | player_stats
-        )  # pass players directly to the transformer
-
-    pipeline = match_source(match_details)
-
-    return list(pipeline)
+    # Get the data and ensure it's flattened
+    return pipeline
 
 
 # --- Main Comparison Function ---
@@ -238,12 +230,12 @@ def run_and_compare(data):
     global results_list
     results_list = []  # Reset results for a clean run for this specific data size
 
-    # Execute each function to populate the results list
-    pandas_flatten(data)
-    manual_flatten(data)
-    generator_flatten(data)
-    flatdict_flatten(data)
-    dlt_flatten(data)
+    # Execute each function with a fresh copy of the data
+    dlt_flatten(copy.deepcopy(data))
+    pandas_flatten(copy.deepcopy(data))
+    manual_flatten(copy.deepcopy(data))
+    generator_flatten(copy.deepcopy(data))
+    flatdict_flatten(copy.deepcopy(data))
 
     # Create a DataFrame from the results for this run
     df_results = pd.DataFrame(results_list)
