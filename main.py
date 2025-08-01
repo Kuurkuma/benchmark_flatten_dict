@@ -207,18 +207,29 @@ def dlt_flatten(match_details):
                 "teamsheet", []
             )  # use yield instead yield from, will be faster
 
-        return players_resource
+        @dlt.transformer
+        def player_stats(players):
+            """Takes a player dict, unnests 'match_stats', and yields the result."""
 
-    pipeline = dlt.pipeline(
-        pipeline_name="match_details_pipeline",
-        destination="duckdb",  # Choose the appropriate destination
-        dataset_name="match_details_dataset",
-    )
+            @dlt.defer  # when removed then 100k rows is processd faster
+            def _get_player_stats(_player):
+                if "match_stats" in _player:
+                    stats = _player.pop(
+                        "match_stats", {}
+                    )  # seems that if yield from used then it's a str and .pop does not exist
+                    _player.update(stats)
+                return _player
 
-    pipeline.run(match_source(match_details))
+            for _player in players:
+                yield _get_player_stats(_player)
 
-    # Get the data and ensure it's flattened
-    return pipeline
+        return (
+            players_resource | player_stats
+        )  # pass players directly to the transformer
+
+    pipeline = match_source(match_details)
+
+    return list(pipeline)
 
 
 # --- Main Comparison Function ---
