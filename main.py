@@ -5,13 +5,13 @@ import pandas as pd
 from flatdict import FlatDict
 import dlt
 import json
+import gc
 
 def generate_sample_data(num_players):
     """
-    Generates a larger match_details dictionary with rugby player individual stats.
+    Generates a match_details dictionary with rugby player individual stats.
     This imitate a real-life API endpoint.
     """
-
     players = []
     for i in range(1, num_players + 1):
         if 1 <= i <= 8:
@@ -98,23 +98,72 @@ def benchmark(func):
 @benchmark
 def manual_flatten(match_details):
     """
-    A specific manual function that flattens the player stats.
+    A pure nonesense manual function that flattens the player stats using a list comprehension.
+    Used as reference for very static way !
     """
-    player_stats = []
     player_list = match_details.get('home', {}).get('teamsheet', [])
 
-    for player in player_list:
-        flat_stats = player.get('match_stats', {})
-        player_row = {
+    player_stats = [
+        {
             'player_id': player.get('player_id'),
             'name': player.get('name'),
             'position': player.get('position'),
             'substitute': player.get('substitute'),
-            **flat_stats
+            'points': player.get('match_stats', {}).get('points', None),
+            'tries': player.get('match_stats', {}).get('tries', None),
+            'turnovers_conceded': player.get('match_stats', {}).get('turnovers_conceded', None),
+            'offload': player.get('match_stats', {}).get('offload', None),
+            'dominant_tackles': player.get('match_stats', {}).get('dominant_tackles', None),
+            'missed_tackles': player.get('match_stats', {}).get('missed_tackles', None),
+            'tackle_success': player.get('match_stats', {}).get('tackle_success', None),
+            'tackle_try_saver': player.get('match_stats', {}).get('tackle_try_saver', None),
+            'tackle_turnover': player.get('match_stats', {}).get('tackle_turnover', None),
+            'penalty_goals': player.get('match_stats', {}).get('penalty_goals', None),
+            'missed_penalty_goals': player.get('match_stats', {}).get('missed_penalty_goals', None),
+            'conversion_goals': player.get('match_stats', {}).get('conversion_goals', None),
+            'missed_conversion_goals': player.get('match_stats', {}).get('missed_conversion_goals', None),
+            'drop_goals_converted': player.get('match_stats', {}).get('drop_goals_converted', None),
+            'drop_goal_missed': player.get('match_stats', {}).get('drop_goal_missed', None),
+            'runs': player.get('match_stats', {}).get('runs', None),
+            'metres': player.get('match_stats', {}).get('metres', None),
+            'clean_breaks': player.get('match_stats', {}).get('clean_breaks', None),
+            'defenders_beaten': player.get('match_stats', {}).get('defenders_beaten', None),
+            'try_assists': player.get('match_stats', {}).get('try_assists', None),
+            'passes': player.get('match_stats', {}).get('passes', None),
+            'bad_passes': player.get('match_stats', {}).get('bad_passes', None),
+            'rucks_won': player.get('match_stats', {}).get('rucks_won', None),
+            'rucks_lost': player.get('match_stats', {}).get('rucks_lost', None),
+            'lineouts_won': player.get('match_stats', {}).get('lineouts_won', None),
+            'penalties_conceded': player.get('match_stats', {}).get('penalties_conceded', None)
         }
-        player_stats.append(player_row)
+        for player in player_list
+    ]
+
     return player_stats
 
+# this time, we are reasonable and use the unpack operator '**'. Less lines of code, indeed !
+@benchmark
+def unpack_operator_flatten(match_details):
+    """
+    A manual function that flattens the player stats using 
+    a pythonic list comprehension method and the unpack operator
+    """
+    player_list = match_details.get('home', {}).get('teamsheet', [])
+
+    player_stats = [
+        {
+            'player_id': player.get('player_id'),
+            'name': player.get('name'),
+            'position': player.get('position'),
+            'substitute': player.get('substitute'),
+            **player.get('match_stats', {}),         # nice! unpacking operator here for unesting the dictionary
+        }
+        for player in player_list
+    ]
+
+    return player_stats
+
+# generator function
 @benchmark
 def generator_flatten(match_details):
     """
@@ -137,21 +186,20 @@ def generator_flatten(match_details):
         return dict(flatten_gen(d, parent_key, sep))
 
     player_list = match_details.get('home', {}).get('teamsheet', [])
-    player_stats = []
-
-    for player in player_list:
-        if 'match_stats' in player and isinstance(player['match_stats'], MutableMapping):
-            nested_stats = player.pop('match_stats')
-            flat_stats = flatten_dict(nested_stats, sep='_')
-            player.update(flat_stats)
-
-        player_stats.append(player)
-
+   # Process each player with a list comprehension
+    player_stats = [
+        {**{k: v for k, v in player.items() if k != 'match_stats'}, 
+         **flatten_dict(player['match_stats'], sep='_')} 
+        for player in player_list 
+        if 'match_stats' in player and isinstance(player['match_stats'], MutableMapping)
+    ]
+    
     return player_stats
 
 
 ## Library-based functions
 
+# pandas !
 @benchmark
 def pandas_flatten(match_details):
     """Flattens player stats using pandas."""
@@ -159,19 +207,19 @@ def pandas_flatten(match_details):
     player_list = match_details.get('home', {}).get('teamsheet', [])
     df = pd.json_normalize(player_list, sep='_')
     df = df.rename(columns=lambda x: x.replace('match_stats_', ''))
+
     return df.to_dict(orient='records')
 
+# FlatDict
 @benchmark
 def flatdict_flatten(match_details):
     """Flattens player stats using the flatdict library."""
 
-    player_stats = []
     player_list = match_details.get('home', {}).get('teamsheet', [])
-    for player in player_list:
-        stats = player.pop('match_stats', {})
-        flat_stats = FlatDict(stats, delimiter='_')
-        player.update(flat_stats)
-        player_stats.append(player)
+    player_stats = [
+        player.update(FlatDict(player.pop('match_stats', {}), delimiter='_')) or player
+        for player in player_list
+    ]
 
     return player_stats
 
@@ -213,17 +261,30 @@ def run_and_compare(data):
     global results_list
     results_list = [] # Reset results for a clean run for this specific data size
 
-    # Execute each function to populate the results list
-    pandas_flatten(data)
-    manual_flatten(data)
-    generator_flatten(data)
-    flatdict_flatten(data)
-    dlt_flatten(data)
+    import copy as cp
 
-    # Create a DataFrame from the results for this run
+    # Execute each function with its own copy of the data to populate the results list
+    pandas_data = cp.deepcopy(data)
+    pandas_flatten(pandas_data)
+    gc.collect()
+    
+    manual_data = cp.deepcopy(data)
+    manual_flatten(manual_data)
+    gc.collect()
+
+    generator_data = cp.deepcopy(data)
+    generator_flatten(generator_data)
+    gc.collect()
+    
+    flatdict_data = cp.deepcopy(data)
+    flatdict_flatten(flatdict_data)
+    gc.collect()
+    
+    dlt_data = cp.deepcopy(data)
+    dlt_flatten(dlt_data)
+
+    # Create a DataFrame to perform further analysis
     df_results = pd.DataFrame(results_list)
-
-    # Return the dataframe so it can be collected
     return df_results
 
 
@@ -253,9 +314,8 @@ if __name__ == "__main__":
     print("="*50 + "\n")
 
     final_comparison_df = pd.concat(all_results_dfs, ignore_index=True)
-    # Reorder columns for better readability
     final_comparison_df = final_comparison_df[['num_players', 'function', 'time_in_s', 'memory_in_mb']]
-
     print(final_comparison_df.sort_values(by=['num_players', 'memory_in_mb']).to_string())
-
+    
+    # save to json for further analyis
     final_comparison_df.to_json("data/benchmark_results.json", orient='records')
