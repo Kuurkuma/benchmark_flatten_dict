@@ -295,7 +295,7 @@ def run_and_compare(data):
 
 # --- Main Execution Block ---
 if __name__ == "__main__":
-    player_counts = [23, 100, 1000, 10000, 100000]
+    player_counts = [23, 46, 100, 1000, 10000, 100000] # in rugby, 23 is the number of player per team, including subsitutes.
 
     all_results_dfs = []
 
