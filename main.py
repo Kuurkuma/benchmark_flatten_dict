@@ -1,4 +1,4 @@
-import copy
+import copy as cp
 import time
 import tracemalloc
 from functools import wraps
@@ -7,6 +7,7 @@ import gc
 
 import dlt
 import pandas as pd
+import polars as pl
 from flatdict import FlatDict
 
 
@@ -222,6 +223,16 @@ def pandas_flatten(match_details):
 
     return df.to_dict(orient='records')
 
+# let's try the other bear
+@benchmark
+def polars_flatten(match_details):
+    """Flattens player stats using polars."""
+
+    player_list = match_details.get('home', {}).get('teamsheet', [])
+    df = pl.DataFrame(player_list)
+    flat_df = df.unnest('match_stats')
+    return flat_df.to_dicts()
+
 # FlatDict
 @benchmark
 def flatdict_flatten(match_details):
@@ -285,30 +296,27 @@ def run_and_compare(data):
     global results_list
     results_list = []  # Reset results for a clean run for this specific data size
 
-    gc.collect()
     # Execute each function with its own copy of the data to populate the results list
-    pandas_data = cp.deepcopy(data)
-    pandas_flatten(pandas_data)
     gc.collect()
-    
-    manual_data = cp.deepcopy(data)
-    manual_flatten(manual_data)
-    gc.collect()
+    pandas_flatten(cp.deepcopy(data))
 
-    generator_data = cp.deepcopy(data)
-    generator_flatten(generator_data)
     gc.collect()
-
-    unpack_data = cp.deepcopy(data)
-    unpack_operator_flatten(unpack_data)
-    gc.collect
+    polars_flatten(cp.deepcopy(data))
     
-    flatdict_data = cp.deepcopy(data)
-    flatdict_flatten(flatdict_data)
     gc.collect()
+    manual_flatten(cp.deepcopy(data))
     
-    dlt_data = cp.deepcopy(data)
-    dlt_flatten(dlt_data)
+    gc.collect()
+    generator_flatten(cp.deepcopy(data))
+    
+    gc.collect()
+    unpack_operator_flatten(cp.deepcopy(data))
+    
+    gc.collect()
+    flatdict_flatten(cp.deepcopy(data))
+    
+    gc.collect()
+    dlt_flatten(cp.deepcopy(data))
 
     # Create a DataFrame to perform further analysis
     df_results = pd.DataFrame(results_list)
