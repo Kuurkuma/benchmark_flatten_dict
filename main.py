@@ -262,7 +262,8 @@ def run_and_compare(data):
     results_list = [] # Reset results for a clean run for this specific data size
 
     import copy as cp
-
+    
+    gc.collect()
     # Execute each function with its own copy of the data to populate the results list
     pandas_data = cp.deepcopy(data)
     pandas_flatten(pandas_data)
@@ -275,6 +276,10 @@ def run_and_compare(data):
     generator_data = cp.deepcopy(data)
     generator_flatten(generator_data)
     gc.collect()
+
+    unpack_data = cp.deepcopy(data)
+    unpack_operator_flatten(unpack_data)
+    gc.collect
     
     flatdict_data = cp.deepcopy(data)
     flatdict_flatten(flatdict_data)
