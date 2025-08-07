@@ -1,11 +1,14 @@
+import copy
 import time
 import tracemalloc
 from functools import wraps
-import pandas as pd
-from flatdict import FlatDict
-import dlt
 import json
 import gc
+
+import dlt
+import pandas as pd
+from flatdict import FlatDict
+
 
 def generate_sample_data(num_players):
     """
@@ -15,67 +18,70 @@ def generate_sample_data(num_players):
     players = []
     for i in range(1, num_players + 1):
         if 1 <= i <= 8:
-            position = 'Forward'
+            position = "Forward"
         elif 9 <= i <= 15:
-            position = 'Back'
-        else: # Substitutes doesnt matter for the example
-            position = 'Substitute'
+            position = "Back"
+        else:  # Substitutes doesnt matter for the example
+            position = "Substitute"
         # logic to define if player is a substitute
         is_substitute = i > 15
 
         player = {
-            'player_id': i,
-            'name': f'Player {i}',
-            'position': position,
-            'substitute': is_substitute,
-            'match_stats': {
-                'points': (i % 3) * 5,
-                'tries': i % 3,
-                'turnovers_conceded': i % 4,
-                'offload': i % 5,
-                'dominant_tackles': i % 10,
-                'missed_tackles': i % 5,
-                'tackle_success': round(0.85 + (i % 15) / 100, 2),
-                'tackle_try_saver': i % 2,
-                'tackle_turnover': i % 3,
-                'penalty_goals': i % 2,
-                'missed_penalty_goals': i % 2,
-                'conversion_goals': i % 4,
-                'missed_conversion_goals': i % 4,
-                'drop_goals_converted': i % 1,
-                'drop_goal_missed': i % 2,
-                'runs': i % 20 + 5,
-                'metres': (i % 20 + 5) * 8,
-                'clean_breaks': i % 4,
-                'defenders_beaten': i % 6,
-                'try_assists': i % 2,
-                'passes': i % 30 + 10,
-                'bad_passes': i % 5,
-                'rucks_won': i % 15,
-                'rucks_lost': i % 3,
-                'lineouts_won': i % 4,
-                'penalties_conceded': i % 3
-            }
+            "player_id": i,
+            "name": f"Player {i}",
+            "position": position,
+            "substitute": is_substitute,
+            "match_stats": {
+                "points": (i % 3) * 5,
+                "tries": i % 3,
+                "turnovers_conceded": i % 4,
+                "offload": i % 5,
+                "dominant_tackles": i % 10,
+                "missed_tackles": i % 5,
+                "tackle_success": round(0.85 + (i % 15) / 100, 2),
+                "tackle_try_saver": i % 2,
+                "tackle_turnover": i % 3,
+                "penalty_goals": i % 2,
+                "missed_penalty_goals": i % 2,
+                "conversion_goals": i % 4,
+                "missed_conversion_goals": i % 4,
+                "drop_goals_converted": i % 1,
+                "drop_goal_missed": i % 2,
+                "runs": i % 20 + 5,
+                "metres": (i % 20 + 5) * 8,
+                "clean_breaks": i % 4,
+                "defenders_beaten": i % 6,
+                "try_assists": i % 2,
+                "passes": i % 30 + 10,
+                "bad_passes": i % 5,
+                "rucks_won": i % 15,
+                "rucks_lost": i % 3,
+                "lineouts_won": i % 4,
+                "penalties_conceded": i % 3,
+            },
         }
         players.append(player)
 
     return {
-        'match_id': 12345,
-        'date': '2025-07-27',
-        'venue': 'Small Mem Stadium',
-        'home': {
-            'team_id': 101,
-            'team_name': 'The Bloody Ingestors',
-            'teamsheet': players
+        "match_id": 12345,
+        "date": "2025-07-27",
+        "venue": "Small Mem Stadium",
+        "home": {
+            "team_id": 101,
+            "team_name": "The Bloody Ingestors",
+            "teamsheet": players,
         },
-        'away': {}
+        "away": {},
     }
+
 
 # --- Benchmarking Setup ---
 results_list = []
 
+
 def benchmark(func):
     """Decorator to measure and store performance."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         tracemalloc.start()
@@ -84,16 +90,21 @@ def benchmark(func):
         end_time = time.perf_counter()
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
-        results_list.append({
-            'function': func.__name__,
-            'time_in_s': end_time - start_time,
-            'memory_in_mb': peak / 10**6,
-        })
+        results_list.append(
+            {
+                "function": func.__name__,
+                "time_in_s": end_time - start_time,
+                "memory_in_mb": peak / 10**6,
+            }
+        )
         return result
+
     return wrapper
+
 
 # --- Flattening Functions ---
 ## Native python
+
 
 @benchmark
 def manual_flatten(match_details):
@@ -101,6 +112,7 @@ def manual_flatten(match_details):
     A pure nonesense manual function that flattens the player stats using a list comprehension.
     Used as reference for very static way !
     """
+    
     player_list = match_details.get('home', {}).get('teamsheet', [])
 
     player_stats = [
@@ -181,7 +193,7 @@ def generator_flatten(match_details):
                 yield new_key, v
 
     # This is the user-facing utility function that starts the process.
-    def flatten_dict(d: MutableMapping, parent_key: str = '', sep: str = '_'):
+    def flatten_dict(d: MutableMapping, parent_key: str = "", sep: str = "_"):
         """A generic utility to flatten a single dictionary."""
         return dict(flatten_gen(d, parent_key, sep))
 
@@ -193,7 +205,7 @@ def generator_flatten(match_details):
         for player in player_list 
         if 'match_stats' in player and isinstance(player['match_stats'], MutableMapping)
     ]
-    
+   
     return player_stats
 
 
@@ -235,23 +247,35 @@ def dlt_flatten(match_details):
     def match_source(data):
         @dlt.resource(name="players_teamsheet", write_disposition="replace")
         def players_resource():
-            yield from data.get('home', {}).get('teamsheet', [])
-        return players_resource
+            yield data.get("home", {}).get(
+                "teamsheet", []
+            )  # use yield instead yield from, will be faster
 
-    @dlt.transformer
-    def unnest_player_stats(player_document):
-        """Takes a player dict, unnests 'match_stats', and yields the result."""
-        if 'match_stats' in player_document:
-            stats = player_document.pop('match_stats', {})
-            player_document.update(stats)
-        yield player_document
+        @dlt.transformer
+        def player_stats(players):
+            """Takes a player dict, unnests 'match_stats', and yields the result."""
+
+            @dlt.defer  # when removed then 100k rows is processd faster
+            def _get_player_stats(_player):
+                if "match_stats" in _player:
+                    stats = _player.pop(
+                        "match_stats", {}
+                    )  # seems that if yield from used then it's a str and .pop does not exist
+                    _player.update(stats)
+                return _player
+
+            for _player in players:
+                yield _get_player_stats(_player)
+
+        return (
+            players_resource | player_stats
+        )  # pass players directly to the transformer
 
     pipeline = match_source(match_details)
-    transformed_pipeline = pipeline | unnest_player_stats
-    return list(transformed_pipeline)
+
+    return list(pipeline)
 
 
-    
 # --- Main Comparison Function ---
 def run_and_compare(data):
     """
@@ -259,10 +283,8 @@ def run_and_compare(data):
     The global results_list is cleared for each run.
     """
     global results_list
-    results_list = [] # Reset results for a clean run for this specific data size
+    results_list = []  # Reset results for a clean run for this specific data size
 
-    import copy as cp
-    
     gc.collect()
     # Execute each function with its own copy of the data to populate the results list
     pandas_data = cp.deepcopy(data)
@@ -299,9 +321,9 @@ if __name__ == "__main__":
 
     all_results_dfs = []
 
-    print("="*50)
+    print("=" * 50)
     print("  Starting Benchmark Suite for Multiple Data Sizes")
-    print("="*50)
+    print("=" * 50)
 
     # Loop over each defined player count
     for num in player_counts:
@@ -309,16 +331,17 @@ if __name__ == "__main__":
         match_data = generate_sample_data(num_players=num)
         results_df_for_num = run_and_compare(match_data)
         # Add a column to identify the data size for this batch of results
-        results_df_for_num['num_players'] = num
+        results_df_for_num["num_players"] = num
 
         all_results_dfs.append(results_df_for_num)
-        print(results_df_for_num.sort_values(by='memory_in_mb').to_string())
+        print(results_df_for_num.sort_values(by="memory_in_mb").to_string())
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("AGGREGATED BENCHMARK RESULTS - by Memory usage")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
 
     final_comparison_df = pd.concat(all_results_dfs, ignore_index=True)
+
     final_comparison_df = final_comparison_df[['num_players', 'function', 'time_in_s', 'memory_in_mb']]
     print(final_comparison_df.sort_values(by=['num_players', 'memory_in_mb']).to_string())
     
