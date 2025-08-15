@@ -9,6 +9,7 @@ import dlt
 import pandas as pd
 import polars as pl
 from flatdict import FlatDict
+import duckdb
 
 
 def generate_sample_data(num_players):
@@ -286,6 +287,27 @@ def dlt_flatten(match_details):
 
     return list(pipeline)
 
+@benchmark
+def duckdb_flatten(match_details):
+    """ flatten using sql & unnest function from duckdb"""
+    generated_json = './data/generated_data.json'
+    with open(generated_json, 'w') as f:
+        json.dump(match_details, f)
+
+    # unnest using duckdb sql
+    player_stats = duckdb.sql(f"""
+    with home as (
+        select 
+            unnest(home)
+        from read_json_auto('{generated_json}')
+        )
+        select
+            unnest(teamsheet, recursive := true)
+        from home;
+    """
+    ).df()
+    
+    return player_stats.to_dict(orient='records')
 
 # --- Main Comparison Function ---
 def run_and_compare(data):
@@ -317,6 +339,9 @@ def run_and_compare(data):
     
     gc.collect()
     dlt_flatten(cp.deepcopy(data))
+    
+    gc.collect()
+    duckdb_flatten(cp.deepcopy(data))
 
     # Create a DataFrame to perform further analysis
     df_results = pd.DataFrame(results_list)
