@@ -4,7 +4,7 @@ For testiong purposes, we use sports statistics data — specifically, rugby dat
 
 ## Context
 
-I have worked on a project to build a clean, queryable database of rugby statistics. The goal is to power a new kind of sports visualization experience — built by and for fans.
+I have worked on a project to build a clean, queryable database of rugby statistics. The goal is to power a new EXCLUDEkind of sports visualization experience — built by and for fans.
 
 To achieve this, I was ingesting data from a RapidAPI that returns deeply nested JSON responses. This includes complex structures such as:
 
