@@ -33,11 +33,15 @@ The benchmark compares **two main categories** of ingestion methods:
 
 ### 1. Native Python Approaches
 
-#### a. Manual `.get()` Extraction
+#### a. Manual `.get()` extraction
 A straightforward method that manually walks through JSON keys using `.get()`, building records field by field.
 
-#### b. Recursive Generator Function
+#### b. Unpacking operator `**`
+A easier way to unpack values of a dictionnary
+
+#### c. Recursive Generator Function
 A more advanced approach using a recursive generator to yield all values from a nested JSON object.
+To write this function, I inspired from [`this article`](https://www.freecodecamp.org/news/how-to-flatten-a-dictionary-in-python-in-4-different-ways/) written by Miguel Brito
 
 ### 2. Library-Oriented Approaches
 
