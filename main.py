@@ -107,7 +107,6 @@ def benchmark(func):
 # --- Flattening Functions ---
 ## Native python
 
-
 @benchmark
 def manual_flatten(match_details):
     """
@@ -244,10 +243,11 @@ def flatdict_flatten(match_details):
         player.update(FlatDict(player.pop('match_stats', {}), delimiter='_')) or player
         for player in player_list
     ]
+    return player_stats
 
 
 ## dlt Pipeline Function - note: dlt is more a ingestion tool for building pipeline
-
+@benchmark
 def dlt_flatten(match_details):
     """
     Flattens player stats using dlt pipeline structure.
@@ -285,6 +285,34 @@ def dlt_flatten(match_details):
 
     return list(pipeline)
 
+# ====================================
+# Bonus - using Duckdb unnest function
+# ====================================
+
+@benchmark
+def duckdb_flatten(match_details):
+    "flatten using sql & unnest function from duckdb"
+
+    # create an intermediate json file 
+    generated_json = './data/generated_data.json'
+    with open(generated_json, 'w') as f:
+        json.dump(match_details, f)
+
+    # unnest using duckdb sql
+    player_stats = duckdb.sql(f"""
+    with home as (
+        select 
+            unnest(home)
+        from read_json_auto('{generated_json}')
+        )
+        select
+            unnest(teamsheet, recursive := true)
+        from home;
+    """
+    ).df()
+    
+    return player_stats.to_dict(orient='records')
+
 # --- Main Comparison Function ---
 def run_and_compare(data):
     """
@@ -315,8 +343,10 @@ def run_and_compare(data):
     
     gc.collect()
     dlt_flatten(cp.deepcopy(data))
-    
 
+    gc.collect()
+    duckdb_flatten(cp.deepcopy(data))
+    
     # Create a DataFrame to perform further analysis
     df_results = pd.DataFrame(results_list)
     return df_results
